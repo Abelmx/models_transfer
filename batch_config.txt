@@ -3,5 +3,5 @@
 # Or: source_repo (uses TARGET_BASE_URL from environment)
 
 # Intern-S1 Models
-internlm/Intern-S1
-# internlm/Intern-S1-mini
+# internlm/Intern-S1
+internlm/Intern-S1-mini
