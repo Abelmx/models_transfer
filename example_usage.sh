@@ -49,8 +49,17 @@ echo "  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.
 echo "  --temp-dir /tmp/my_transfer"
 echo ""
 
-# Example 6: Mirror mode (sync ALL refs)
-echo "Example 6: Mirror mode - sync ALL branches, tags, and refs"
+# Example 6: Use Xget acceleration for faster downloads
+echo "Example 6: Xget acceleration (3-10x faster HuggingFace downloads)"
+echo "---"
+echo "python3 transfer.py \\"
+echo "  --source https://huggingface.co/internlm/Intern-S1 \\"
+echo "  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \\"
+echo "  --use-xget"
+echo ""
+
+# Example 7: Mirror mode (sync ALL refs)
+echo "Example 7: Mirror mode - sync ALL branches, tags, and refs"
 echo "---"
 echo "python3 transfer.py \\"
 echo "  --source https://huggingface.co/internlm/Intern-S1 \\"
@@ -58,8 +67,8 @@ echo "  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.
 echo "  --mirror"
 echo ""
 
-# Example 7: Configure GitLab pull mirror (offload transfer)
-echo "Example 7: Configure GitLab pull mirror (offload transfer)"
+# Example 8: Configure GitLab pull mirror (offload transfer)
+echo "Example 8: Configure GitLab pull mirror (offload transfer)"
 echo "---"
 echo "python3 transfer.py \\"
 echo "  --source https://huggingface.co/internlm/Intern-S1 \\"
@@ -67,8 +76,8 @@ echo "  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.
 echo "  --use-remote-mirror"
 echo ""
 
-# Example 8: Help
-echo "Example 8: Show help message"
+# Example 9: Help
+echo "Example 9: Show help message"
 echo "---"
 echo "python3 transfer.py --help"
 echo ""

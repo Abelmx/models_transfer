@@ -255,6 +255,53 @@ python3 transfer.py ...
 
 ## General Issues
 
+### "HTTP 429: Rate limit exceeded"
+
+**Symptom:**
+```
+error: RPC failed; HTTP 429 curl 22 The requested URL returned error: 429
+fatal: the remote end hung up unexpectedly
+```
+
+**Cause:** 
+1. Too many requests to HuggingFace or CDN in a short time
+2. IP-based rate limiting
+3. Shared CDN rate limits (when using Xget)
+
+**Solutions:**
+
+**Immediate fix:**
+```bash
+# Wait a few minutes and retry
+sleep 300  # Wait 5 minutes
+
+# Or disable Xget and use direct connection
+python3 transfer.py \
+  --source https://huggingface.co/model \
+  --target https://target.com/repo.git
+  # Without --use-xget flag
+```
+
+**Long-term solutions:**
+1. **Authenticate with HuggingFace** (higher rate limits):
+   ```bash
+   # In .env file
+   HF_TOKEN=your_real_token_here
+   HF_USERNAME=your_username
+   ```
+
+2. **Reduce concurrent transfers**:
+   ```bash
+   # In batch scripts, process fewer models at once
+   # Or add delays between transfers
+   ```
+
+3. **Use off-peak hours**:
+   - Transfer during lower traffic times
+
+4. **Contact Xget support** (if using --use-xget):
+   - Report rate limit issues to Xget project
+
 ### "No space left on device"
 
 **Cause:** Large model files fill up `/tmp`

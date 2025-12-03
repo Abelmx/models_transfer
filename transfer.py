@@ -191,13 +191,29 @@ class MirrorManager:
 
 
 class ModelTransfer:
-    def __init__(self, source_url: str, target_url: str, temp_dir: str = None, mirror_mode: bool = False):
-        self.source_url = source_url
+    def __init__(self, source_url: str, target_url: str, temp_dir: str = None, mirror_mode: bool = False, use_xget: bool = False):
+        self.source_url = self._apply_xget_acceleration(source_url) if use_xget else source_url
         self.target_url = target_url
         self.temp_dir = temp_dir or tempfile.mkdtemp(prefix="hf_transfer_")
         self.repo_path = os.path.join(self.temp_dir, "repo")
         self.pointer_only_mode = str_to_bool(os.getenv('GIT_LFS_SKIP_SMUDGE'), default=False)
         self.mirror_mode = mirror_mode
+        self.use_xget = use_xget
+    
+    @staticmethod
+    def _apply_xget_acceleration(url: str) -> str:
+        """
+        Apply Xget acceleration to HuggingFace URLs.
+        Converts: https://huggingface.co/... to https://xget.xi-xu.me/hf/...
+        """
+        if 'huggingface.co' in url:
+            # Remove https:// prefix if present
+            url_without_protocol = url.replace('https://', '').replace('http://', '')
+            # Remove huggingface.co/ and prepend xget prefix
+            accelerated_path = url_without_protocol.replace('huggingface.co/', '')
+            accelerated_url = f'https://xget.xi-xu.me/hf/{accelerated_path}'
+            return accelerated_url
+        return url
         
     def run_command(self, cmd: list, cwd: str = None, env: dict = None):
         """Execute shell command and return output."""
@@ -230,9 +246,14 @@ class ModelTransfer:
             raise
     
     def inject_credentials(self, url: str, username: str = None, token: str = None):
-        """Inject credentials into git URL if provided."""
-        if not token:
+        """Inject credentials into git URL if provided and valid."""
+        # Check if token is empty or a placeholder
+        if not token or self._is_placeholder(token):
             return url
+        
+        # Check if username is a placeholder
+        if username and self._is_placeholder(username):
+            username = None
         
         parsed = urlparse(url)
         
@@ -255,11 +276,32 @@ class ModelTransfer:
             parsed.fragment
         ))
     
+    @staticmethod
+    def _is_placeholder(value: str) -> bool:
+        """Check if a value is a placeholder string."""
+        if not value:
+            return True
+        
+        # Common placeholder patterns
+        placeholders = [
+            'your_', 'your-', 'yourhf', 
+            'placeholder', 'example',
+            'xxx', 'token_here', 'username_here',
+            'changeme', 'replace', 'fill'
+        ]
+        
+        value_lower = value.lower()
+        return any(pattern in value_lower for pattern in placeholders)
+    
     def clone_source(self):
         """Clone the source repository from HuggingFace."""
         print("\n" + "="*60)
         print("📥 Step 1: Cloning source repository from HuggingFace")
         print("="*60)
+        
+        if self.use_xget:
+            print("🚀 Xget acceleration enabled for faster downloads!")
+            print(f"   Accelerated URL: {self.source_url}")
         
         # Get HuggingFace token from environment
         hf_token = os.getenv('HF_TOKEN')
@@ -287,6 +329,10 @@ class ModelTransfer:
         print("📥 Step 1: Cloning source repository as mirror from HuggingFace")
         print("="*60)
         print("ℹ️  Mirror mode: cloning ALL refs (branches, tags, remotes)")
+        
+        if self.use_xget:
+            print("🚀 Xget acceleration enabled for faster downloads!")
+            print(f"   Accelerated URL: {self.source_url}")
         
         # Get HuggingFace token from environment
         hf_token = os.getenv('HF_TOKEN')
@@ -485,6 +531,8 @@ class ModelTransfer:
             print(f"📍 Source: {self.source_url}")
             print(f"📍 Target: {self.target_url}")
             print(f"📁 Temp directory: {self.temp_dir}")
+            if self.use_xget:
+                print("🚀 Xget acceleration: Enabled (faster HuggingFace downloads)")
             if self.mirror_mode:
                 print("🪞 Mirror mode enabled: ALL refs (branches, tags, remotes) will be synced")
             if self.pointer_only_mode:
@@ -552,6 +600,12 @@ Examples:
     --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \\
     --mirror
   
+  # Use Xget acceleration for faster HuggingFace downloads
+  python transfer.py \\
+    --source https://huggingface.co/internlm/Intern-S1 \\
+    --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \\
+    --use-xget
+  
   # Keep temporary files for inspection
   python transfer.py \\
     --source https://huggingface.co/internlm/Intern-S1 \\
@@ -596,6 +650,12 @@ Examples:
     )
     
     parser.add_argument(
+        '--use-xget',
+        action='store_true',
+        help='Use Xget acceleration for HuggingFace downloads (https://github.com/xixu-me/Xget)'
+    )
+    
+    parser.add_argument(
         '--use-remote-mirror',
         action='store_true',
         help='Configure server-side mirroring (GitLab pull mirror) instead of local transfer'
@@ -634,7 +694,8 @@ Examples:
         source_url=args.source,
         target_url=args.target,
         temp_dir=args.temp_dir,
-        mirror_mode=args.mirror
+        mirror_mode=args.mirror,
+        use_xget=args.use_xget
     )
     
     try:

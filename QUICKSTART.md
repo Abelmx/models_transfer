@@ -116,7 +116,20 @@ python transfer.py \
   --target https://maoxin:glpat-token@nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git
 ```
 
-### Scenario 3: Mirror Mode (Sync ALL Refs)
+### Scenario 3: Xget Acceleration (Faster Downloads)
+
+Use Xget for 3-10x faster HuggingFace downloads:
+
+```bash
+python transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
+  --use-xget
+```
+
+Powered by [Xget](https://github.com/xixu-me/Xget) global CDN acceleration network.
+
+### Scenario 4: Mirror Mode (Sync ALL Refs)
 
 Transfer ALL branches, tags, and refs:
 
@@ -129,7 +142,7 @@ python transfer.py \
 
 This uses `git clone --mirror` and `git push --mirror` to create a complete repository mirror.
 
-### Scenario 4: Debug Mode (Keep Files)
+### Scenario 6: Debug Mode (Keep Files)
 
 ```bash
 python transfer.py \
@@ -140,7 +153,7 @@ python transfer.py \
 
 Files will be kept in `/tmp/hf_transfer_*` for inspection.
 
-### Scenario 5: Transfer Multiple Models
+### Scenario 7: Transfer Multiple Models
 # Scenario 5: Remote mirroring (GitLab pull mirror)
 ```bash
 python transfer.py \

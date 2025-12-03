@@ -106,6 +106,25 @@ else
 fi
 
 echo ""
+echo "Step 2.5: Installing HuggingFace XET (optional, for faster downloads)..."
+echo "---"
+
+pip3 install huggingface_hub[hf_transfer] --upgrade > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    print_success "HuggingFace XET installed"
+    
+    # Add to bashrc if not already present
+    if ! grep -q "HF_HUB_ENABLE_HF_TRANSFER" ~/.bashrc; then
+        echo "" >> ~/.bashrc
+        echo "# HuggingFace XET acceleration" >> ~/.bashrc
+        echo "export HF_HUB_ENABLE_HF_TRANSFER=1" >> ~/.bashrc
+        print_success "HF-XET auto-enabled in ~/.bashrc"
+    fi
+else
+    print_warning "HuggingFace XET installation failed (optional feature)"
+fi
+
+echo ""
 echo "Step 3: Setting up configuration..."
 echo "---"
 

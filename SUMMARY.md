@@ -128,6 +128,7 @@ Visit your target platform and verify the model repository has been transferred.
 ### ✨ Functionality
 
 - ✅ **Complete Transfer**: Clones entire repository including all LFS files
+- ✅ **Xget Acceleration**: 3-10x faster HuggingFace downloads via global CDN
 - ✅ **Mirror Mode**: Sync ALL refs (branches, tags, remotes) using `git --mirror`
 - ✅ **Remote Mirroring**: Configure GitLab pull mirrors via API (offload heavy transfers)
 - ✅ **Multi-Platform**: Works with any Git LFS-based platform
@@ -177,7 +178,16 @@ python3 transfer.py \
   --target https://username:glpat-your_token@nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git
 ```
 
-### Example 3: Mirror Mode (Sync ALL Refs)
+### Example 3: Xget Acceleration (Faster Downloads)
+
+```bash
+python3 transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
+  --use-xget
+```
+
+### Example 4: Mirror Mode (Sync ALL Refs)
 
 ```bash
 python3 transfer.py \
@@ -186,7 +196,7 @@ python3 transfer.py \
   --mirror
 ```
 
-### Example 4: Keep Temp Files (Debug)
+### Example 6: Keep Temp Files (Debug)
 
 ```bash
 python3 transfer.py \
@@ -195,7 +205,7 @@ python3 transfer.py \
   --no-cleanup
 ```
 
-### Example 5: Batch Transfer
+### Example 7: Batch Transfer
 
 ```bash
 # Edit batch_transfer.sh first

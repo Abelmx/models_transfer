@@ -40,6 +40,13 @@ A command-line tool to transfer model repositories from HuggingFace to other Git
    python3 --version
    ```
 
+4. **HuggingFace XET** (Optional but recommended) - For faster downloads
+   ```bash
+   pip install huggingface_hub[hf_transfer]
+   export HF_HUB_ENABLE_HF_TRANSFER=1
+   ```
+   See [HF_XET_SETUP.md](HF_XET_SETUP.md) for details.
+
 ## Installation
 
 1. Clone or download this repository:
@@ -73,12 +80,14 @@ A command-line tool to transfer model repositories from HuggingFace to other Git
 
 3. Configure your tokens:
 
-   **For HuggingFace:**
-   - Get your token from: https://huggingface.co/settings/tokens
-   - Set `HF_TOKEN` in `.env`
-   - Optionally set `HF_USERNAME` if your repo is private
+   **For HuggingFace (Optional for public repos):**
+   - **Public repositories**: No credentials needed (can leave placeholders)
+   - **Private/gated repositories**: 
+     - Get your token from: https://huggingface.co/settings/tokens
+     - Set `HF_TOKEN` and `HF_USERNAME` in `.env`
+   - The tool automatically detects placeholder values and skips credential injection
 
-   **For Target Platform:**
+   **For Target Platform (Required):**
    - Set `TARGET_USERNAME` and `TARGET_TOKEN` according to your platform
    - For GitLab-based platforms (OpenXlab, etc.): Use access tokens
    - For ModelScope: Use your ModelScope credentials
@@ -169,6 +178,12 @@ python transfer.py \
   --source https://huggingface.co/internlm/Intern-S1 \
   --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
   --mirror
+
+# Use Xget acceleration for faster HuggingFace downloads
+python transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
+  --use-xget
 ```
 
 ### Command Line Arguments
@@ -179,8 +194,58 @@ python transfer.py \
 - `--no-cleanup`: Keep temporary files after transfer
 - `--env-file`: Path to custom .env file (default: .env)
 - `--mirror`: Mirror mode - clone and push ALL refs (branches, tags, remotes) using `git --mirror`
+- `--use-xget`: Use Xget acceleration for HuggingFace downloads (3-10x faster)
 - `--use-remote-mirror`: Configure remote mirroring (GitLab pull mirror) instead of local transfer
 - `-h, --help`: Show help message
+
+### Xget Acceleration (Fast HuggingFace Downloads)
+
+When `--use-xget` is set, the tool uses [Xget](https://github.com/xixu-me/Xget) - a high-performance acceleration engine for HuggingFace downloads:
+
+**Features:**
+- ✅ 3-10x faster downloads from HuggingFace
+- ✅ Global CDN edge network acceleration
+- ✅ Parallel chunk downloads
+- ✅ Automatic failover and retry
+- ✅ No additional configuration needed
+
+**How it works:**
+The tool automatically transforms your HuggingFace URL:
+- Original: `https://huggingface.co/internlm/Intern-S1`
+- Accelerated: `https://xget.xi-xu.me/hf/internlm/Intern-S1`
+
+**Example:**
+
+```bash
+python transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
+  --use-xget
+```
+
+**Combine with other options:**
+
+```bash
+# Xget + Mirror mode
+python transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
+  --use-xget \
+  --mirror
+
+# Xget + HF-Transfer (Python library)
+export HF_HUB_ENABLE_HF_TRANSFER=1
+python transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
+  --use-xget
+```
+
+**Note:** Xget acceleration applies to the git clone operation from HuggingFace. It works independently of HF-Transfer (Python library) and can be used together for optimal performance.
+
+**Powered by:** [Xget - Ultra-high-performance acceleration engine](https://github.com/xixu-me/Xget)
+
+---
 
 ### Mirror Mode (Local Full Repository Mirror)
 
@@ -357,10 +422,35 @@ git push <target> 'refs/tags/*:refs/tags/*' --force
 - HuggingFace repos contain `refs/pr/*` which GitLab doesn't support
 - The tool's fallback strategy pushes only branches and tags
 
+## Batch Transfer
+
+For transferring multiple models at once with optimal performance:
+
+```bash
+# 1. Create configuration file
+cp batch_config.example.txt batch_config.txt
+nano batch_config.txt  # Add your models
+
+# 2. Run batch transfer (Xget + HF-Transfer enabled by default)
+./batch_transfer_optimized.sh
+
+# 3. Or with target base URL
+./batch_transfer_optimized.sh --target-base https://your-platform.com/models
+
+# 4. Dry run to preview
+./batch_transfer_optimized.sh --dry-run
+```
+
+See [BATCH_TRANSFER_GUIDE.md](BATCH_TRANSFER_GUIDE.md) for complete documentation.
+
 ## Additional Documentation
 
 For more detailed information, see:
 
+- **[BATCH_TRANSFER_GUIDE.md](BATCH_TRANSFER_GUIDE.md)** - Batch transfer guide
+- **[ACCELERATION_COMPARISON.md](ACCELERATION_COMPARISON.md)** - HF-Transfer vs Xget comparison
+- **[XGET_GUIDE.md](XGET_GUIDE.md)** - Xget acceleration guide
+- **[HF_XET_SETUP.md](HF_XET_SETUP.md)** - HF-Transfer setup guide
 - **[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** - Detailed solutions for common issues
 - **[PLATFORM_GUIDE.md](PLATFORM_GUIDE.md)** - Platform-specific configuration
 - **[QUICKSTART.md](QUICKSTART.md)** - 5-minute quick start guide
