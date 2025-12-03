@@ -218,8 +218,15 @@ class ModelTransfer:
             return accelerated_url
         return url
         
-    def run_command(self, cmd: list, cwd: str = None, env: dict = None):
-        """Execute shell command and return output."""
+    def run_command(self, cmd: list, cwd: str = None, env: dict = None, stream_output: bool = True):
+        """Execute shell command and return output.
+        
+        Args:
+            cmd: Command to execute
+            cwd: Working directory
+            env: Environment variables
+            stream_output: If True, stream output in real-time; if False, capture and return
+        """
         print(f"\n🔧 Executing: {' '.join(cmd)}")
         
         # Merge environment variables
@@ -228,17 +235,30 @@ class ModelTransfer:
             cmd_env.update(env)
         
         try:
-            result = subprocess.run(
-                cmd,
-                cwd=cwd,
-                check=True,
-                capture_output=True,
-                text=True,
-                env=cmd_env
-            )
-            if result.stdout:
-                print(result.stdout)
-            return result
+            if stream_output:
+                # Stream output in real-time (for large operations like git clone)
+                result = subprocess.run(
+                    cmd,
+                    cwd=cwd,
+                    check=True,
+                    text=True,
+                    env=cmd_env
+                    # Don't capture output - let it stream to terminal
+                )
+                return result
+            else:
+                # Capture output (for commands where we need to parse the result)
+                result = subprocess.run(
+                    cmd,
+                    cwd=cwd,
+                    check=True,
+                    capture_output=True,
+                    text=True,
+                    env=cmd_env
+                )
+                if result.stdout:
+                    print(result.stdout)
+                return result
         except subprocess.CalledProcessError as e:
             print(f"❌ Error executing command: {' '.join(cmd)}")
             print(f"Return code: {e.returncode}")
@@ -407,7 +427,7 @@ class ModelTransfer:
             # Get list of LFS files
             result = self.run_command([
                 'git', 'lfs', 'ls-files', '-n'
-            ], cwd=self.repo_path)
+            ], cwd=self.repo_path, stream_output=False)
             
             lfs_files = result.stdout.strip().split('\n') if result.stdout.strip() else []
             
@@ -483,7 +503,7 @@ class ModelTransfer:
         # Get the default branch name
         result = self.run_command([
             'git', 'branch', '--show-current'
-        ], cwd=self.repo_path)
+        ], cwd=self.repo_path, stream_output=False)
         branch = result.stdout.strip() or 'main'
         
         # Push all branches and tags

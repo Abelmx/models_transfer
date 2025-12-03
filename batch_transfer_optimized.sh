@@ -176,8 +176,9 @@ transfer_model() {
         echo "  Would execute: $cmd" | tee -a "$LOG_FILE"
         return 0
     else
-        echo "  Executing: $cmd" >> "$LOG_FILE"
-        if eval "$cmd" >> "$LOG_FILE" 2>&1; then
+        echo "  Executing: $cmd" | tee -a "$LOG_FILE"
+        # Use tee to show output in terminal AND save to log file
+        if eval "$cmd" 2>&1 | tee -a "$LOG_FILE"; then
             return 0
         else
             return 1
