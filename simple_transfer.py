@@ -39,10 +39,26 @@ def inject_credentials(url, username=None, token=None):
     ))
 
 
-def run_git_command(cmd, cwd=None):
-    """Execute git command and stream output."""
+def run_git_command(cmd, cwd=None, show_progress=True):
+    """Execute git command and stream output.
+    
+    Args:
+        cmd: Command to execute
+        cwd: Working directory
+        show_progress: If True, show real-time progress (for git push/pull/lfs)
+    """
     print(f"→ {' '.join(cmd)}")
-    result = subprocess.run(cmd, cwd=cwd, text=True)
+    
+    if show_progress:
+        # For commands with progress (git clone, git lfs push, etc.)
+        # Don't capture output - let it stream to terminal
+        result = subprocess.run(cmd, cwd=cwd, text=True)
+    else:
+        # For commands we need to parse
+        result = subprocess.run(cmd, cwd=cwd, capture_output=True, text=True)
+        if result.stdout:
+            print(result.stdout)
+    
     if result.returncode != 0:
         raise subprocess.CalledProcessError(result.returncode, cmd)
     return result
@@ -72,7 +88,9 @@ def transfer_repository(source_url, target_url, hf_username=None, hf_token=None,
         
         # Step 2: Fetch all LFS files
         print("\n📦 Step 2/4: Fetching Git LFS files...")
+        print("Downloading LFS objects (this may take a while)...")
         run_git_command(['git', 'lfs', 'fetch', '--all'], cwd=repo_path)
+        print("Checking out LFS files...")
         run_git_command(['git', 'lfs', 'checkout'], cwd=repo_path)
         
         # Step 3: Change remote to target
@@ -84,21 +102,23 @@ def transfer_repository(source_url, target_url, hf_username=None, hf_token=None,
         print("\n📤 Step 4/4: Pushing to target repository...")
         
         # Push LFS objects first
+        print("Pushing LFS objects (this may take a while for large files)...")
         run_git_command(['git', 'lfs', 'push', 'origin', '--all'], cwd=repo_path)
         
         # Get current branch
-        result = subprocess.run(
+        result = run_git_command(
             ['git', 'branch', '--show-current'],
             cwd=repo_path,
-            capture_output=True,
-            text=True
+            show_progress=False
         )
         branch = result.stdout.strip() or 'main'
         
         # Push branch
+        print(f"Pushing branch '{branch}' to target...")
         run_git_command(['git', 'push', '-u', 'origin', branch, '--force'], cwd=repo_path)
         
         # Push tags
+        print("Pushing tags...")
         try:
             run_git_command(['git', 'push', 'origin', '--tags', '--force'], cwd=repo_path)
         except subprocess.CalledProcessError:
