@@ -1,56 +1,7 @@
-# HuggingFace Model Batch Transfer Configuration
-# 
-# Format:
-#   source_repo|target_url          - Full specification
-#   source_repo                     - Uses --target-base + model name
-#
-# Lines starting with # are comments and will be ignored
-# Empty lines are also ignored
+# Batch Transfer Configuration
+# Format: source_repo|target_repo
+# Or: source_repo (uses TARGET_BASE_URL from environment)
 
-# ============================================================================
-# Example 1: Full URL specification
-# ============================================================================
-
-# Intern series models
-internlm/Intern-S1-mini|https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git
-
-
-
-# ============================================================================
-# Example 2: Using target base URL (set with --target-base)
-# ============================================================================
-
-# These require: --target-base https://your-platform.com/path/to/models
-# Will automatically append model name + .git
-
-# meta-llama/Llama-2-7b
-# meta-llama/Llama-2-13b
-# openai/whisper-large
-# stabilityai/stable-diffusion-2
-
-# ============================================================================
-# Example 3: Mix of formats
-# ============================================================================
-
-# Full URL for special cases
-# bigscience/bloom-7b1|https://special-server.com/bloom-7b1.git
-
-# Use target base for others
-# facebook/opt-6.7b
-# EleutherAI/gpt-j-6B
-
-# ============================================================================
-# Tips:
-# ============================================================================
-#
-# 1. Start with small models to test your setup
-# 2. Use --dry-run first to preview what will happen
-# 3. Models are processed in order
-# 4. Failed transfers will be retried (default: 2 times)
-# 5. Check the log file for detailed information
-#
-# Performance modes:
-#   - Default: Xget + HF-Transfer (5-15x faster) ⭐ Recommended
-#   - Xget only: --no-hf-transfer (3-10x faster)
-#   - Standard: --no-xget --no-hf-transfer (baseline)
-
+# Intern-S1 Models
+internlm/Intern-S1
+internlm/Intern-S1-mini

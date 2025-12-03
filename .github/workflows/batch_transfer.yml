@@ -1,0 +1,144 @@
+name: Batch Model Transfer
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+    inputs:
+      use_xget:
+        description: 'Use Xget acceleration'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      mirror_mode:
+        description: 'Enable mirror mode'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      ignore_lfs:
+        description: 'Ignore LFS files (text only)'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      skip_lfs_errors:
+        description: 'Skip LFS push errors'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+      delay:
+        description: 'Delay between models (seconds)'
+        required: false
+        default: '60'
+        type: string
+      max_retries:
+        description: 'Max retry attempts'
+        required: false
+        default: '3'
+        type: string
+  
+  # Scheduled execution (optional, commented out)
+  # schedule:
+  #   - cron: '0 2 * * 0'  # Every Sunday at 2 AM UTC
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360  # 6 hours max
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: Install system dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git-lfs
+        git lfs install
+    
+    - name: Install Python dependencies
+      run: |
+        pip install --upgrade pip
+        pip install -r requirements.txt
+    
+    - name: Configure environment
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_USERNAME: ${{ secrets.HF_USERNAME }}
+        TARGET_TOKEN: ${{ secrets.TARGET_TOKEN }}
+        TARGET_USERNAME: ${{ secrets.TARGET_USERNAME }}
+        TARGET_BASE_URL: ${{ secrets.TARGET_BASE_URL }}
+      run: |
+        # Create .env file from secrets
+        cat > .env << EOF
+        # HuggingFace Configuration
+        HF_TOKEN=${HF_TOKEN}
+        HF_USERNAME=${HF_USERNAME}
+        
+        # Target Platform Configuration
+        TARGET_TOKEN=${TARGET_TOKEN}
+        TARGET_USERNAME=${TARGET_USERNAME}
+        
+        # Performance Settings
+        HF_HUB_ENABLE_HF_TRANSFER=1
+        GIT_LFS_SKIP_SMUDGE=0
+        EOF
+        
+        echo "✅ Environment configured"
+    
+    - name: Run batch transfer
+      run: |
+        chmod +x batch_transfer_optimized.sh
+        
+        # Build command with options
+        CMD="./batch_transfer_optimized.sh"
+        CMD="$CMD --config batch_config.txt"
+        CMD="$CMD --target-base ${{ secrets.TARGET_BASE_URL }}"
+        CMD="$CMD --continue-on-error"
+        CMD="$CMD --max-retries ${{ inputs.max_retries || '3' }}"
+        CMD="$CMD --delay ${{ inputs.delay || '60' }}"
+        
+        # Add optional flags
+        [[ "${{ inputs.use_xget }}" == "false" ]] && CMD="$CMD --no-xget"
+        [[ "${{ inputs.mirror_mode }}" == "true" ]] && CMD="$CMD --mirror"
+        [[ "${{ inputs.ignore_lfs }}" == "true" ]] && CMD="$CMD --ignore-lfs"
+        [[ "${{ inputs.skip_lfs_errors }}" == "true" ]] && CMD="$CMD --skip-lfs-errors"
+        
+        echo "Executing: $CMD"
+        eval "$CMD"
+    
+    - name: Upload transfer logs
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: transfer-logs-${{ github.run_number }}
+        path: batch_transfer_*.log
+        retention-days: 30
+    
+    - name: Notify on failure
+      if: failure()
+      run: |
+        echo "❌ Transfer failed! Check logs for details."
+        echo "Log artifact will be available in the Actions tab."
+    
+    - name: Notify on success
+      if: success()
+      run: |
+        echo "✅ All transfers completed successfully!"
+        echo "Check the logs artifact for detailed information."
+

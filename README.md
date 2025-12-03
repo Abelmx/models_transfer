@@ -13,6 +13,7 @@ A command-line tool to transfer model repositories from HuggingFace to other Git
 - ⚡ Xget CDN acceleration for faster HuggingFace downloads (3-15x speedup)
 - 🔄 Mirror mode for complete repository synchronization
 - 📋 Batch transfer support with intelligent retry and error handling
+- ☁️ **GitHub Actions integration** - Run transfers in the cloud, bypass local network limits
 - 🎚️ **Staged transfer modes:**
   - **Ignore LFS mode**: Transfer only text files (fastest)
   - **Pointer mode**: Transfer Git structure with LFS pointers (no large files)
@@ -55,6 +56,37 @@ A command-line tool to transfer model repositories from HuggingFace to other Git
    See [HF_XET_SETUP.md](HF_XET_SETUP.md) for details.
 
 ## Installation
+
+### Option 1: GitHub Actions (Recommended for Slow Networks) ☁️
+
+**Run transfers in the cloud, completely bypass local network limitations!**
+
+Perfect for users with slow local networks. GitHub provides free cloud runners with high-speed connections to both HuggingFace and your target platform.
+
+**Quick Setup (5 minutes):**
+
+1. **Configure GitHub Secrets** (one-time setup):
+   - Visit: `https://github.com/YOUR_USERNAME/models_transfer/settings/secrets/actions`
+   - Add these secrets:
+     - `TARGET_BASE_URL`: `https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin`
+     - `TARGET_USERNAME`: `your_username`
+     - `TARGET_TOKEN`: `glpat-your_token`
+
+2. **Edit `batch_config.txt`** with your models:
+   ```
+   internlm/Intern-S1
+   internlm/Intern-S1-mini
+   ```
+
+3. **Trigger the workflow**:
+   - Go to `Actions` tab → `Batch Model Transfer` → `Run workflow`
+   - Select options and start!
+
+📖 **See [GITHUB_ACTIONS_GUIDE.md](GITHUB_ACTIONS_GUIDE.md) for complete setup instructions**
+
+---
+
+### Option 2: Local Installation
 
 1. Clone or download this repository:
    ```bash
