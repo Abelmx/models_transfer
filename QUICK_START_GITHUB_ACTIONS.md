@@ -105,9 +105,38 @@ git push origin main
 
 ---
 
+## 💾 磁盘空间说明
+
+**重要：** GitHub Actions 免费 runner 原本只有约 10GB 可用空间。
+
+**已自动解决：** 
+
+Workflow 已配置**自动磁盘清理**，会释放 20-30GB 额外空间：
+- ✅ 清理后可用空间：~35 GB
+- ✅ 足够传输 Intern-S1（30GB）
+- ✅ 无需手动操作
+
+**验证：** 在 Actions 日志中查看 "After cleanup" 显示的可用空间。
+
+📖 **详细说明：** [GITHUB_ACTIONS_DISK_SPACE.md](GITHUB_ACTIONS_DISK_SPACE.md)
+
+---
+
 ## 🔧 常见问题
 
-### Q1: Secrets 设置错误？
+### Q1: 磁盘空间不足？
+
+**症状**: "No space left on device"
+
+**解决**:
+1. 检查 workflow 是否已更新（包含磁盘清理步骤）
+2. 查看日志中的 "After cleanup" 显示可用空间
+3. 如果仍不足，使用分批传输或指针模式
+4. 详见 [GITHUB_ACTIONS_DISK_SPACE.md](GITHUB_ACTIONS_DISK_SPACE.md)
+
+---
+
+### Q2: Secrets 设置错误？
 
 **症状**: Workflow 失败，提示 "No target URL specified"
 
@@ -118,7 +147,7 @@ git push origin main
 
 ---
 
-### Q2: Token 权限不足？
+### Q3: Token 权限不足？
 
 **症状**: 推送失败，提示 "Authentication failed"
 
@@ -129,7 +158,7 @@ git push origin main
 
 ---
 
-### Q3: 传输速度慢？
+### Q4: 传输速度慢？
 
 **症状**: 单个模型超过 2 小时
 
@@ -140,7 +169,7 @@ git push origin main
 
 ---
 
-### Q4: HTTP 429 速率限制？
+### Q5: HTTP 429 速率限制？
 
 **症状**: 提示 "Too Many Requests"
 

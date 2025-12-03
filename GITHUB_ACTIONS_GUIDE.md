@@ -222,7 +222,44 @@ remote: GitLab: You are not allowed to push code to this project.
 
 ---
 
-### 问题 3: 超时（6 小时限制）
+### 问题 3: 磁盘空间不足
+
+**错误信息：**
+```
+error: no space left on device
+fatal: cannot copy ... to ...: No space left on device
+```
+
+**原因：** GitHub Actions 免费 runner 只有约 10GB 可用空间，大型模型（如 Intern-S1 30GB）会超出限制。
+
+**解决方案（已自动配置）：**
+
+Workflow 已添加**自动磁盘清理步骤**，会释放 20-30GB 空间：
+- 删除 .NET SDK (~2.8 GB)
+- 删除 Android SDK (~11 GB)
+- 删除 GHC (~2.5 GB)
+- 删除 CodeQL (~5 GB)
+- 清理后可用空间：~35 GB ✅
+
+**验证清理是否成功：**
+
+在 Actions 日志中搜索 "After cleanup"：
+```
+After cleanup:
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root        84G   12G   72G  15% /
+```
+
+如果 `Avail` 列显示 > 30 GB，说明清理成功，可以传输 Intern-S1。
+
+**其他解决方案：**
+
+如果仍然空间不足，查看详细方案：
+📖 [GITHUB_ACTIONS_DISK_SPACE.md](GITHUB_ACTIONS_DISK_SPACE.md)
+
+---
+
+### 问题 4: 超时（6 小时限制）
 
 **错误信息：**
 ```

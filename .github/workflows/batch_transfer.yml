@@ -57,6 +57,31 @@ jobs:
     timeout-minutes: 360  # 6 hours max
     
     steps:
+    - name: Maximize disk space
+      run: |
+        echo "============================================"
+        echo "Initial disk space:"
+        df -h
+        echo "============================================"
+        
+        # Remove unnecessary software
+        echo "Removing unnecessary software..."
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo rm -rf /usr/local/share/boost
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        
+        # Clean apt cache
+        sudo apt-get clean
+        sudo rm -rf /var/lib/apt/lists/*
+        
+        echo "============================================"
+        echo "After cleanup:"
+        df -h
+        echo "============================================"
+    
     - name: Checkout repository
       uses: actions/checkout@v4
     
@@ -105,6 +130,12 @@ jobs:
       run: |
         chmod +x batch_transfer_optimized.sh
         
+        # Monitor disk space
+        echo "============================================"
+        echo "Available disk space before transfer:"
+        df -h
+        echo "============================================"
+        
         # Build command with options
         CMD="./batch_transfer_optimized.sh"
         CMD="$CMD --config batch_config.txt"
@@ -121,6 +152,12 @@ jobs:
         
         echo "Executing: $CMD"
         eval "$CMD"
+        
+        # Show final disk usage
+        echo "============================================"
+        echo "Disk space after transfer:"
+        df -h
+        echo "============================================"
     
     - name: Upload transfer logs
       if: always()
