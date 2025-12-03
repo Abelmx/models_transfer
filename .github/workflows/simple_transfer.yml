@@ -1,0 +1,85 @@
+name: Simple Repository Transfer
+
+on:
+  workflow_dispatch:
+    inputs:
+      repositories:
+        description: 'Repository pairs (one per line: source|target)'
+        required: true
+        type: string
+        default: |
+          https://huggingface.co/gpt2|https://target.com/gpt2.git
+
+jobs:
+  transfer:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    
+    steps:
+    - name: Maximize disk space
+      run: |
+        echo "Cleaning up disk space..."
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo rm -rf /opt/hostedtoolcache/CodeQL
+        sudo rm -rf /usr/local/share/boost
+        sudo apt-get clean
+        df -h
+    
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+    
+    - name: Install Git LFS
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y git-lfs
+        git lfs install
+    
+    - name: Prepare transfer script
+      run: |
+        chmod +x simple_transfer.py
+    
+    - name: Parse and execute transfers
+      env:
+        HF_USERNAME: ${{ secrets.HF_USERNAME }}
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        TARGET_USERNAME: ${{ secrets.TARGET_USERNAME }}
+        TARGET_TOKEN: ${{ secrets.TARGET_TOKEN }}
+        REPOSITORIES: ${{ inputs.repositories }}
+      run: |
+        echo "Parsing repository list..."
+        
+        # Build command with repository pairs
+        CMD="python3 simple_transfer.py"
+        
+        # Parse repository pairs from multiline input
+        while IFS='|' read -r source target; do
+          # Skip empty lines and comments
+          [[ -z "$source" || "$source" =~ ^[[:space:]]*# ]] && continue
+          
+          # Trim whitespace
+          source=$(echo "$source" | xargs)
+          target=$(echo "$target" | xargs)
+          
+          # Add to command
+          CMD="$CMD '$source' '$target'"
+          
+          echo "  - Source: $source"
+          echo "    Target: $target"
+        done <<< "$REPOSITORIES"
+        
+        echo ""
+        echo "Starting transfer..."
+        eval "$CMD"
+    
+    - name: Upload logs on failure
+      if: failure()
+      run: |
+        echo "Transfer failed. Check logs above for details."
+
