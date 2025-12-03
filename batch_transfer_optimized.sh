@@ -21,6 +21,8 @@ DEFAULT_NO_CLEANUP=false                 # Keep temporary files
 DEFAULT_CONTINUE_ON_ERROR=false          # Continue on individual failures
 DEFAULT_MAX_RETRIES=2                    # Retry failed transfers
 DEFAULT_DELAY_BETWEEN_MODELS=0           # Delay in seconds between models (0=no delay)
+DEFAULT_IGNORE_LFS=false                 # Ignore all LFS files (including pointers)
+DEFAULT_SKIP_LFS_ERRORS=false            # Continue even if LFS push fails
 
 # Target platform base URL (set this or provide per-model)
 DEFAULT_TARGET_BASE_URL=""
@@ -79,6 +81,8 @@ OPTIONS:
     --continue-on-error     Continue even if some transfers fail
     --max-retries N         Maximum retry attempts (default: 2)
     --delay N               Delay in seconds between models (default: 0, helps avoid rate limits)
+    --ignore-lfs            Ignore ALL LFS files (including pointers) - only transfer regular files
+    --skip-lfs-errors       Continue even if LFS push fails (useful with pointer-only mode)
     --dry-run               Show what would be transferred without doing it
     --help                  Show this help message
 
@@ -164,6 +168,8 @@ transfer_model() {
     [[ "$USE_MIRROR" == "true" ]] && cmd="$cmd --mirror"
     [[ "$USE_REMOTE_MIRROR" == "true" ]] && cmd="$cmd --use-remote-mirror"
     [[ "$NO_CLEANUP" == "true" ]] && cmd="$cmd --no-cleanup"
+    [[ "$IGNORE_LFS" == "true" ]] && cmd="$cmd --ignore-lfs"
+    [[ "$SKIP_LFS_ERRORS" == "true" ]] && cmd="$cmd --skip-lfs-errors"
     
     # Execute
     if [[ "$DRY_RUN" == "true" ]]; then
@@ -192,6 +198,8 @@ NO_CLEANUP="$DEFAULT_NO_CLEANUP"
 CONTINUE_ON_ERROR="$DEFAULT_CONTINUE_ON_ERROR"
 MAX_RETRIES="$DEFAULT_MAX_RETRIES"
 DELAY_BETWEEN_MODELS="$DEFAULT_DELAY_BETWEEN_MODELS"
+IGNORE_LFS="$DEFAULT_IGNORE_LFS"
+SKIP_LFS_ERRORS="$DEFAULT_SKIP_LFS_ERRORS"
 TARGET_BASE_URL="$DEFAULT_TARGET_BASE_URL"
 DRY_RUN=false
 
@@ -237,6 +245,14 @@ while [[ $# -gt 0 ]]; do
         --delay)
             DELAY_BETWEEN_MODELS="$2"
             shift 2
+            ;;
+        --ignore-lfs)
+            IGNORE_LFS=true
+            shift
+            ;;
+        --skip-lfs-errors)
+            SKIP_LFS_ERRORS=true
+            shift
             ;;
         --dry-run)
             DRY_RUN=true

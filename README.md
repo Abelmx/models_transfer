@@ -6,10 +6,17 @@ A command-line tool to transfer model repositories from HuggingFace to other Git
 
 - 🚀 Transfer entire model repositories including Git LFS files
 - 🔐 Secure credential management via environment variables
-- 📦 Automatic Git LFS handling
+- 📦 Automatic Git LFS handling with flexible modes
 - 🧹 Automatic cleanup of temporary files
 - 🎯 Support for multiple target platforms
 - 🪞 Optional remote mirroring mode (GitLab pull mirror) to offload large transfers
+- ⚡ Xget CDN acceleration for faster HuggingFace downloads (3-15x speedup)
+- 🔄 Mirror mode for complete repository synchronization
+- 📋 Batch transfer support with intelligent retry and error handling
+- 🎚️ **Staged transfer modes:**
+  - **Ignore LFS mode**: Transfer only text files (fastest)
+  - **Pointer mode**: Transfer Git structure with LFS pointers (no large files)
+  - **Skip LFS errors**: Continue even if LFS push fails
 
 ## Prerequisites
 
@@ -186,6 +193,41 @@ python transfer.py \
   --use-xget
 ```
 
+### Staged Transfer Modes
+
+**Transfer only text files (fastest, no LFS):**
+```bash
+python transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
+  --ignore-lfs
+```
+
+**Transfer with pointers only (skip LFS errors):**
+```bash
+# Set GIT_LFS_SKIP_SMUDGE=1 in .env first
+python transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
+  --skip-lfs-errors
+```
+
+**Two-stage transfer strategy:**
+```bash
+# Stage 1: Quick transfer of text files
+python transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \
+  --ignore-lfs
+
+# Stage 2: Full transfer with model weights (later)
+python transfer.py \
+  --source https://huggingface.co/internlm/Intern-S1 \
+  --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git
+```
+
+📖 **See [STAGED_TRANSFER_GUIDE.md](STAGED_TRANSFER_GUIDE.md) for detailed usage and strategies**
+
 ### Command Line Arguments
 
 - `-s, --source`: Source HuggingFace repository URL (required)
@@ -195,6 +237,8 @@ python transfer.py \
 - `--env-file`: Path to custom .env file (default: .env)
 - `--mirror`: Mirror mode - clone and push ALL refs (branches, tags, remotes) using `git --mirror`
 - `--use-xget`: Use Xget acceleration for HuggingFace downloads (3-10x faster)
+- `--ignore-lfs`: Ignore ALL LFS files (including pointers) - only transfer regular Git files
+- `--skip-lfs-errors`: Continue transfer even if LFS push fails (useful with `GIT_LFS_SKIP_SMUDGE=1`)
 - `--use-remote-mirror`: Configure remote mirroring (GitLab pull mirror) instead of local transfer
 - `-h, --help`: Show help message
 

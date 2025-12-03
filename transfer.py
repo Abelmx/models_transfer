@@ -191,7 +191,8 @@ class MirrorManager:
 
 
 class ModelTransfer:
-    def __init__(self, source_url: str, target_url: str, temp_dir: str = None, mirror_mode: bool = False, use_xget: bool = False):
+    def __init__(self, source_url: str, target_url: str, temp_dir: str = None, mirror_mode: bool = False, 
+                 use_xget: bool = False, ignore_lfs_files: bool = False, skip_lfs_errors: bool = False):
         self.source_url = self._apply_xget_acceleration(source_url) if use_xget else source_url
         self.target_url = target_url
         self.temp_dir = temp_dir or tempfile.mkdtemp(prefix="hf_transfer_")
@@ -199,6 +200,8 @@ class ModelTransfer:
         self.pointer_only_mode = str_to_bool(os.getenv('GIT_LFS_SKIP_SMUDGE'), default=False)
         self.mirror_mode = mirror_mode
         self.use_xget = use_xget
+        self.ignore_lfs_files = ignore_lfs_files
+        self.skip_lfs_errors = skip_lfs_errors
     
     @staticmethod
     def _apply_xget_acceleration(url: str) -> str:
@@ -357,8 +360,13 @@ class ModelTransfer:
     def fetch_lfs_files(self):
         """Fetch all LFS files from the source repository."""
         print("\n" + "="*60)
-        print("📦 Step 2: Fetching Git LFS files")
+        print("📦 Step 2: Handling Git LFS files")
         print("="*60)
+
+        if self.ignore_lfs_files:
+            print("🚫 Ignore LFS mode: Removing ALL LFS tracking (pointers + objects)")
+            self.remove_lfs_tracking()
+            return
 
         if self.pointer_only_mode:
             print("⚠️  GIT_LFS_SKIP_SMUDGE=1 detected — skipping Git LFS fetch/checkout.")
@@ -375,6 +383,60 @@ class ModelTransfer:
         ], cwd=self.repo_path)
         
         print("✅ Git LFS files fetched successfully")
+    
+    def remove_lfs_tracking(self):
+        """Remove all Git LFS tracking from the repository."""
+        print("🔧 Removing Git LFS tracking...")
+        
+        # Uninstall Git LFS for this repository
+        try:
+            self.run_command([
+                'git', 'lfs', 'uninstall'
+            ], cwd=self.repo_path)
+        except subprocess.CalledProcessError:
+            print("⚠️  Git LFS uninstall failed, continuing...")
+        
+        # Remove .gitattributes (LFS tracking configuration)
+        gitattributes_path = os.path.join(self.repo_path, '.gitattributes')
+        if os.path.exists(gitattributes_path):
+            os.remove(gitattributes_path)
+            print(f"   Removed {gitattributes_path}")
+        
+        # Remove all LFS pointer files from git index
+        try:
+            # Get list of LFS files
+            result = self.run_command([
+                'git', 'lfs', 'ls-files', '-n'
+            ], cwd=self.repo_path)
+            
+            lfs_files = result.stdout.strip().split('\n') if result.stdout.strip() else []
+            
+            if lfs_files and lfs_files[0]:
+                print(f"   Found {len(lfs_files)} LFS files to remove")
+                
+                # Remove LFS files from git
+                for lfs_file in lfs_files:
+                    if lfs_file.strip():
+                        lfs_file_path = os.path.join(self.repo_path, lfs_file.strip())
+                        if os.path.exists(lfs_file_path):
+                            os.remove(lfs_file_path)
+                
+                # Stage the changes
+                self.run_command([
+                    'git', 'add', '-A'
+                ], cwd=self.repo_path)
+                
+                # Commit the changes
+                self.run_command([
+                    'git', 'commit', '-m', 'Remove LFS tracked files'
+                ], cwd=self.repo_path)
+                
+                print("✅ All LFS tracked files removed")
+            else:
+                print("   No LFS files found")
+        except subprocess.CalledProcessError as e:
+            print(f"⚠️  Error removing LFS files: {e}")
+            print("   Continuing without LFS files...")
     
     def change_remote(self):
         """Change the remote to target platform."""
@@ -458,17 +520,32 @@ class ModelTransfer:
             token=target_token
         )
         
-        # First push LFS objects to target
-        print("\n📦 Pushing Git LFS objects...")
-        try:
-            self.run_command([
-                'git', 'lfs', 'push', target_url_with_creds, '--all'
-            ], cwd=self.repo_path)
-            print("✅ LFS objects pushed successfully")
-        except subprocess.CalledProcessError as e:
-            print("⚠️  LFS push failed or no LFS objects to push")
-            if not self.pointer_only_mode:
-                print(f"   Error: {e}")
+        # Handle LFS push based on mode
+        if self.ignore_lfs_files:
+            print("🚫 Skipping LFS push (ignore-lfs mode)")
+        elif self.skip_lfs_errors:
+            print("⚠️  Skip LFS errors mode: LFS push will be attempted without stopping on errors")
+            print("\n📦 Pushing Git LFS objects...")
+            try:
+                self.run_command([
+                    'git', 'lfs', 'push', target_url_with_creds, '--all'
+                ], cwd=self.repo_path)
+                print("✅ LFS objects pushed successfully")
+            except subprocess.CalledProcessError as e:
+                print("⚠️  LFS push failed - continuing anyway (skip-lfs-errors mode)")
+                print(f"   Reason: {e}")
+        else:
+            # Normal LFS push
+            print("\n📦 Pushing Git LFS objects...")
+            try:
+                self.run_command([
+                    'git', 'lfs', 'push', target_url_with_creds, '--all'
+                ], cwd=self.repo_path)
+                print("✅ LFS objects pushed successfully")
+            except subprocess.CalledProcessError as e:
+                print("⚠️  LFS push failed or no LFS objects to push")
+                if not self.pointer_only_mode:
+                    print(f"   Error: {e}")
         
         # Try mirror push first (fastest method)
         print("\n🪞 Attempting mirror push (all refs)...")
@@ -606,6 +683,18 @@ Examples:
     --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \\
     --use-xget
   
+  # Ignore ALL LFS files (only transfer regular Git files)
+  python transfer.py \\
+    --source https://huggingface.co/internlm/Intern-S1 \\
+    --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \\
+    --ignore-lfs
+  
+  # Skip LFS errors (useful with GIT_LFS_SKIP_SMUDGE=1 for pointer-only mode)
+  python transfer.py \\
+    --source https://huggingface.co/internlm/Intern-S1 \\
+    --target https://nm.aihuanxin.cn/qdlake/repo/llm_model/maoxin/Intern-S1.git \\
+    --skip-lfs-errors
+  
   # Keep temporary files for inspection
   python transfer.py \\
     --source https://huggingface.co/internlm/Intern-S1 \\
@@ -656,6 +745,18 @@ Examples:
     )
     
     parser.add_argument(
+        '--ignore-lfs',
+        action='store_true',
+        help='Ignore ALL LFS files (including pointers) - only transfer regular Git files'
+    )
+    
+    parser.add_argument(
+        '--skip-lfs-errors',
+        action='store_true',
+        help='Continue transfer even if LFS push fails (useful with GIT_LFS_SKIP_SMUDGE=1)'
+    )
+    
+    parser.add_argument(
         '--use-remote-mirror',
         action='store_true',
         help='Configure server-side mirroring (GitLab pull mirror) instead of local transfer'
@@ -695,7 +796,9 @@ Examples:
         target_url=args.target,
         temp_dir=args.temp_dir,
         mirror_mode=args.mirror,
-        use_xget=args.use_xget
+        use_xget=args.use_xget,
+        ignore_lfs_files=args.ignore_lfs,
+        skip_lfs_errors=args.skip_lfs_errors
     )
     
     try:
